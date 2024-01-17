@@ -63,3 +63,8 @@ systemctl start tomcat
 systemctl enable tomcat
 
 ufw allow 8080
+
+echo "Se admite el trafico a traves del puerto 8080."
+
+# Accede a Tomcat a traves de esta URL
+echo "Accede a la interfaz de Tomcat con esta URL: http://54.90.218.138:8080"
