@@ -1,34 +1,35 @@
+#!/bin/bash
 
-useradd -m -d /opt/tomcat -U -s /bin/false tomcat
+id tomcat || useradd -m -d /opt/tomcat -U -s /bin/false tomcat
+apt-get update -y
+apt-get upgrade -y
 
-apt update
-
-apt install -y default-jdk
-
-java -version
-
-cd /tmp
-wget https://dlcdn.apache.org/tomcat/tomcat-10/v10.0.20/bin/apache-tomcat-10.0.20.tar.gz
-tar xzvf apache-tomcat-10*tar.gz -C /opt/tomcat --strip-components=1
-
+# Instalación del JDK
+apt install openjdk-17-jdk-headless -y
+wget https://dlcdn.apache.org/tomcat/tomcat-10/v10.1.18/bin/apache-tomcat-10.1.18.tar.gz -O /tmp/tomcat.tar.gz
+tar xzvf /tmp/tomcat.tar.gz -C /opt/tomcat --strip-components=1
 chown -R tomcat:tomcat /opt/tomcat/
 chmod -R u+x /opt/tomcat/bin
 
-tee -a /opt/tomcat/conf/tomcat-users.xml <<END
-<role rolename="manager-gui" />
-<user username="manager" password="usuario" roles="manager-gui" />
+cp /opt/tomcat/conf/tomcat-users.xml /opt/tomcat/conf/tomcat-users-backup.xml
 
-<role rolename="admin-gui" />
-<user username="admin" password="usuario" roles="manager-gui,admin-gui" />
-END
+sed -i '/<\/tomcat-users>/i\
+  <role rolename="manager-gui" />\
+  <user username="manager" password="usuario" roles="manager-gui" />\
+\
+  <role rolename="admin-gui" /> \
+  <user username="admin" password="usuario" roles="manager-gui,admin-gui" />' /opt/tomcat/conf/tomcat-users.xml
 
-sed -i '/<Valve/,/allow="127\\\.\\d\\+\\\.\\d\\+\\\.\\d\\+|::1|0:0:0:0:0:0:0:1"/ s/^/<!--/; /<Valve/,/allow="127\\\.\\d\\+\\\.\\d\\+\\\.\\d\\+|::1|0:0:0:0:0:0:0:1"/ s/$/-->/' /opt/tomcat/webapps/manager/META-INF/context.xml
+# manager
+sed -i '/<Valve/i\<!--' /opt/tomcat/webapps/manager/META-INF/context.xml
+sed -i '/allow="127/a-->' /opt/tomcat/webapps/manager/META-INF/context.xml
 
-sed -i '/<Valve/,/allow="127\\\.\\d\\+\\\.\\d\\+\\\.\\d\\+|::1|0:0:0:0:0:0:0:1"/ s/^/<!--/; /<Valve/,/allow="127\\\.\\d\\+\\\.\\d\\+\\\.\\d\\+|::1|0:0:0:0:0:0:0:1"/ s/$/-->/' /opt/tomcat/webapps/host-manager/META-INF/context.xml
+# host-manager
+sed -i '/<Valve/i\<!--' /opt/tomcat/webapps/host-manager/META-INF/context.xml
+sed -i '/allow="127/a-->' /opt/tomcat/webapps/host-manager/META-INF/context.xml
 
-JAVA_PATH=$(update-java-alternatives -l | grep -oP '/usr/lib/jvm/java-\d+\.\d+\.\d+-openjdk-amd64')
-
-tee /etc/systemd/system/tomcat.service <<END
+# Creamos el archivo tomcat.service con el texto contenido a continuación, hasta EOF
+cat <<EOF | tee -a /etc/systemd/system/tomcat.service > /dev/null
 [Unit]
 Description=Tomcat
 After=network.target
@@ -39,7 +40,7 @@ Type=forking
 User=tomcat
 Group=tomcat
 
-Environment="JAVA_HOME=$JAVA_PATH"
+Environment="JAVA_HOME=/usr/lib/jvm/java-1.17.0-openjdk-amd64"
 Environment="JAVA_OPTS=-Djava.security.egd=file:///dev/urandom"
 Environment="CATALINA_BASE=/opt/tomcat"
 Environment="CATALINA_HOME=/opt/tomcat"
@@ -54,17 +55,19 @@ Restart=always
 
 [Install]
 WantedBy=multi-user.target
-END
+EOF
 
+# Recargamos la configuración del sistema
 systemctl daemon-reload
-
+# Inicia Tomcat
 systemctl start tomcat
-
+# Mostrará por línea de comandos si Tomcat se ha iniciado correctamente al ejecutar el script
+echo '-----------------------------------------------------------'
+systemctl status tomcat | cat
+echo '-----------------------------------------------------------'
+# Habilitamos el inicio automático del servicio durante el arranque del sistema
 systemctl enable tomcat
-
-ufw allow 8080
-
-echo "Se admite el trafico a traves del puerto 8080."
-
+# Permitimos el tráfico por el puerto 8080, por el que escucha Tomcat
+systemctl restart tomcat
 # Accede a Tomcat a traves de esta URL
 echo "Accede a la interfaz de Tomcat con esta URL: http://54.90.218.138:8080"
