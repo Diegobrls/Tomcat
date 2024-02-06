@@ -195,32 +195,29 @@ Resources:
           # Habilitamos el inicio automático del servicio durante el arranque del sistema
           systemctl enable tomcat
           # Permitimos el tráfico por el puerto 8080, por el que escucha Tomcat
-          systemctl restart tomcat
+          systemctl restart tomcat´
+          ufw allow 8080
           # Accede a Tomcat a traves de esta URL
           echo "Accede a la interfaz de Tomcat con esta URL: http://54.90.218.138:8080"
 
-          #### GITHUB ##### 
+          #### GITHUB Y GRADLEW ##### 
 
           # Instalamos git
           apt install git -y
-          # Navegamos hasta /tmp
+          # Navegamos hasta /tmp y clonamos el repositorio
           cd /tmp
-          # Clonamos el repositorio
           git clone https://github.com/Diegobrls/Tomcat
           # Navegamos al directorio de la aplicación
           cd Tomcat/springholamundo
-          # Modificamos los permisos de gradlew para hacerlo ejecutable
+          # Modificamos los permisos de gradlew para hacerlo ejecutable y lo compilamos
           chmod +x gradlew
-          # Compilamos la aplicación
           ./gradlew war
           # Copiamos el archivo war a la carpeta webapp
           mv build/libs/HolaMundo.war /opt/tomcat/webapps
 
           # Esta tiene que serla ultima instrucción
           /opt/aws/bin/cfn-signal -e $? --stack ${AWS::StackName} --resource EC2Instance --region ${AWS::Region}
-      Tags:
-        - Key: Name
-          Value: !Ref AWS::StackName
+
   SecurityGroup:
     Type: AWS::EC2::SecurityGroup
     Properties:
@@ -239,9 +236,9 @@ Resources:
       Tags:
         - Key: Name
           Value: !Ref AWS::StackName
-
-Outputs:
-  IpPublico:
-    Value: !Sub 'http://${EC2Instance.PublicIp}:8080'
+  Outputs:
+  IPaddress:
+    Description: IP pública de la instancia
+    Value: !Sub "http://${EC2Instance.PublicIp}:8080"
     Export:
-      Name: IpPublico
+      Name: IPaddress
