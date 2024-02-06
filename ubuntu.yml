@@ -239,3 +239,9 @@ Resources:
       Tags:
         - Key: Name
           Value: !Ref AWS::StackName
+
+Outputs:
+  IpPublico:
+    Value: !Sub 'http://${EC2Instance.PublicIp}:8080'
+    Export:
+      Name: IpPublico
